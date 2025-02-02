@@ -1,0 +1,141 @@
+// This is your Prisma schema file
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+model User {
+  id                String    @id @default(cuid())
+  email             String    @unique
+  name              String?
+  createdAt         DateTime  @default(now())
+  updatedAt         DateTime  @updatedAt
+  challenges        Challenge[]
+  envelopeChallenges EnvelopeChallenge[]
+}
+
+model Challenge {
+  id                String    @id @default(cuid())
+  name              String    @default("52 Week Savings Challenge")
+  startDate         DateTime
+  endDate          DateTime  // Calculated based on startDate + 52 weeks
+  incrementAmount   Float
+  yearlyGoal       Float
+  status           ChallengeStatus @default(IN_PROGRESS)
+  createdAt        DateTime  @default(now())
+  updatedAt        DateTime  @updatedAt
+  
+  // Relations
+  userId           String
+  user             User      @relation(fields: [userId], references: [id])
+  weeks            Week[]
+  statistics       Statistics?
+
+  @@index([userId])
+}
+
+model Week {
+  id              String    @id @default(cuid())
+  weekNumber      Int       // 1 to 52
+  startDate       DateTime
+  endDate         DateTime
+  targetAmount    Float
+  savedAmount     Float     @default(0)
+  status          WeekStatus @default(PENDING)
+  confirmedAt     DateTime?
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+
+  // Relations
+  challengeId     String
+  challenge       Challenge @relation(fields: [challengeId], references: [id])
+
+  @@unique([challengeId, weekNumber])
+  @@index([challengeId])
+}
+
+model Statistics {
+  id                      String    @id @default(cuid())
+  totalSaved             Float     @default(0)
+  highestContribution    Float     @default(0)
+  averageContribution    Float     @default(0)
+  completedWeeks         Int       @default(0)
+  lastCompletedWeek     Int       @default(0)
+  streakCount           Int       @default(0)
+  createdAt             DateTime  @default(now())
+  updatedAt             DateTime  @updatedAt
+
+  // Relations
+  challengeId           String    @unique
+  challenge             Challenge @relation(fields: [challengeId], references: [id])
+}
+
+enum ChallengeStatus {
+  NOT_STARTED
+  IN_PROGRESS
+  COMPLETED
+  ABANDONED
+}
+
+enum WeekStatus {
+  PENDING
+  ACTIVE
+  COMPLETED
+  MISSED
+}
+
+// Add these new models for Envelope Challenge
+model EnvelopeChallenge {
+  id                String    @id @default(cuid())
+  name              String    @default("52 Envelope Savings Challenge")
+  startDate         DateTime
+  endDate          DateTime
+  status           ChallengeStatus @default(IN_PROGRESS)
+  createdAt        DateTime  @default(now())
+  updatedAt        DateTime  @updatedAt
+  
+  // Relations
+  userId           String
+  user             User      @relation(fields: [userId], references: [id])
+  envelopes        Envelope[]
+  envelopeStats    EnvelopeStatistics?
+
+  @@index([userId])
+}
+
+model Envelope {
+  id              String    @id @default(cuid())
+  amount          Float
+  isSelected      Boolean   @default(false)
+  selectedAt      DateTime?
+  weekNumber      Int?      // The week when this envelope was selected
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+
+  // Relations
+  challengeId     String
+  challenge       EnvelopeChallenge @relation(fields: [challengeId], references: [id])
+
+  @@index([challengeId])
+}
+
+model EnvelopeStatistics {
+  id                      String    @id @default(cuid())
+  totalSaved             Float     @default(0)
+  remainingEnvelopes     Int       @default(52)
+  highestPicked          Float     @default(0)
+  lowestPicked          Float     @default(0)
+  averagePerWeek        Float     @default(0)
+  lastPickedAmount      Float?
+  lastPickedAt          DateTime?
+  createdAt             DateTime  @default(now())
+  updatedAt             DateTime  @updatedAt
+
+  // Relations
+  challengeId           String    @unique
+  challenge             EnvelopeChallenge @relation(fields: [challengeId], references: [id])
+} 

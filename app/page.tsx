@@ -1,101 +1,158 @@
-import Image from "next/image";
+"use client"
 
-export default function Home() {
+import React from 'react';
+import { useState, useEffect } from 'react';
+import Header from './components/Header';
+import StatsCards from './components/StatsCards';
+import IncrementSetting from './components/IncrementSetting';
+import CharacterProgress from './components/CharacterProgress';
+import WeeklyGrid from './components/WeeklyGrid';
+import BottomNav from './components/BottomNav';
+
+export default function SavingsChallenge() {
+  const weeks = Array.from({ length: 52 }, (_, i) => i + 1);
+  const [savedAmounts, setSavedAmounts] = React.useState<number[]>(Array(52).fill(0));
+  const [incrementAmount, setIncrementAmount] = useState<number>(100);
+  const [confirmedWeeks, setConfirmedWeeks] = useState<boolean[]>(Array(52).fill(false));
+  const [showCharacter, setShowCharacter] = useState(false);
+  const [characterPosition, setCharacterPosition] = useState(0);
+  const [isWalking, setIsWalking] = useState(false);
+
+  // Calculate highest contribution
+  const highestContribution = Math.max(...savedAmounts);
+
+  // Calculate current week
+  const getCurrentWeek = () => {
+    const startDate = new Date('2025-01-06');
+    const currentDate = new Date();
+    const diffTime = currentDate.getTime() - startDate.getTime();
+    const diffWeeks = Math.ceil(diffTime / (1000 * 60 * 60 * 24 * 7));
+    return Math.max(1, Math.min(52, diffWeeks));
+  };
+
+  // Calculate date ranges for 2025
+  const getWeekDateRange = (weekNumber: number) => {
+    const startDate = new Date('2025-01-06'); // First Monday of 2025
+    const weekStart = new Date(startDate);
+    weekStart.setDate(startDate.getDate() + (weekNumber - 1) * 7);
+    const weekEnd = new Date(weekStart);
+    weekEnd.setDate(weekStart.getDate() + 6);
+    
+    return {
+      start: weekStart.toLocaleDateString('en-KE', { day: 'numeric', month: 'short' }),
+      end: weekEnd.toLocaleDateString('en-KE', { day: 'numeric', month: 'short' })
+    };
+  };
+
+  const handleSave = (week: number, amount: number) => {
+    const newAmounts = [...savedAmounts];
+    newAmounts[week - 1] = amount;
+    setSavedAmounts(newAmounts);
+  };
+
+  const handleConfirm = (week: number) => {
+    const newConfirmed = [...confirmedWeeks];
+    newConfirmed[week - 1] = true;
+    setConfirmedWeeks(newConfirmed);
+  };
+
+  const populateIncrementalAmounts = () => {
+    const newAmounts = weeks.map((week) => week * incrementAmount);
+    setSavedAmounts(newAmounts);
+  };
+
+  const totalSaved = savedAmounts.reduce((sum, amount, index) => 
+    sum + (confirmedWeeks[index] ? amount : 0), 0);
+  const percentageComplete = (confirmedWeeks.filter(confirmed => confirmed).length / 52) * 100;
+  const yearlyGoal = weeks.reduce((sum, week) => sum + (week * incrementAmount), 0);
+
+  const getEncouragingMessage = () => {
+    if (percentageComplete === 0) return "Ready to start your savings journey? Let's go! 🚀";
+    if (percentageComplete < 25) return "Great start! Keep the momentum going! 💪";
+    if (percentageComplete < 50) return "You're making excellent progress! Stay consistent! 🌟";
+    if (percentageComplete < 75) return "Look how far you've come! You're crushing it! 🏆";
+    if (percentageComplete < 100) return "The finish line is in sight! You're amazing! 🎯";
+    return "Congratulations! You've completed the challenge! 🎉";
+  };
+
+  useEffect(() => {
+    if (confirmedWeeks.some(confirmed => confirmed)) {
+      setShowCharacter(true);
+      const lastConfirmedIndex = confirmedWeeks.lastIndexOf(true);
+      setCharacterPosition(lastConfirmedIndex);
+      setIsWalking(true);
+      
+      // Reset walking animation after movement
+      setTimeout(() => setIsWalking(false), 1000);
+    }
+  }, [confirmedWeeks]);
+
+  const getCharacterMessage = () => {
+    if (!showCharacter) return "";
+    const currentAmount = savedAmounts[characterPosition];
+    const weekNumber = characterPosition + 1;
+    return `Week ${weekNumber}: You've saved KES ${currentAmount.toLocaleString()} here! 🎯`;
+  };
+
   return (
-    <div className="grid grid-rows-[20px_1fr_20px] items-center justify-items-center min-h-screen p-8 pb-20 gap-16 sm:p-20 font-[family-name:var(--font-geist-sans)]">
-      <main className="flex flex-col gap-8 row-start-2 items-center sm:items-start">
-        <Image
-          className="dark:invert"
-          src="/next.svg"
-          alt="Next.js logo"
-          width={180}
-          height={38}
-          priority
-        />
-        <ol className="list-inside list-decimal text-sm text-center sm:text-left font-[family-name:var(--font-geist-mono)]">
-          <li className="mb-2">
-            Get started by editing{" "}
-            <code className="bg-black/[.05] dark:bg-white/[.06] px-1 py-0.5 rounded font-semibold">
-              app/page.tsx
-            </code>
-            .
-          </li>
-          <li>Save and see your changes instantly.</li>
-        </ol>
+    <div className="min-h-screen bg-[#FAFAFA] text-[#1C1917] [&::-webkit-scrollbar]:hidden [-ms-overflow-style:'none'] [scrollbar-width:'none']">
+      <div className="fixed inset-0 opacity-100" style={{
+        backgroundImage: `url("data:image/svg+xml,%3Csvg viewBox='0 0 2000 2000' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='roughpaper'%3E%3CfeTurbulence type='turbulence' baseFrequency='0.02' numOctaves='5' seed='2' stitchTiles='stitch' result='noise'/%3E%3CfeDiffuseLighting in='noise' lighting-color='%23fff' surfaceScale='2' result='diffLight'%3E%3CfeDistantLight azimuth='45' elevation='35'/%3E%3C/feDiffuseLighting%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23roughpaper)' opacity='1'/%3E%3C/svg%3E")`,
+        backgroundSize: '500px 500px',
+        filter: 'contrast(120%) brightness(110%)',
+      }}></div>
+      <div className="fixed inset-0 mix-blend-overlay opacity-40" style={{
+        backgroundImage: `url("data:image/svg+xml,%3Csvg viewBox='0 0 2000 2000' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='rough'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.015' numOctaves='3' stitchTiles='stitch'/%3E%3CfeDiffuseLighting surfaceScale='3' lighting-color='white'%3E%3CfeDistantLight azimuth='45' elevation='60'/%3E%3C/feDiffuseLighting%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23rough)'/%3E%3C/svg%3E")`,
+        backgroundSize: '1000px 1000px',
+      }}></div>
+      <div className="fixed inset-0 bg-gradient-to-br from-white/10 to-black/5 mix-blend-overlay"></div>
+      <div className="relative z-10">
+        <Header />
+        
+        <div className="container mx-auto px-4 pb-20">
+          <StatsCards
+            totalSaved={totalSaved}
+            yearlyGoal={yearlyGoal}
+            confirmedWeeks={confirmedWeeks}
+            percentageComplete={percentageComplete}
+          />
 
-        <div className="flex gap-4 items-center flex-col sm:flex-row">
-          <a
-            className="rounded-full border border-solid border-transparent transition-colors flex items-center justify-center bg-foreground text-background gap-2 hover:bg-[#383838] dark:hover:bg-[#ccc] text-sm sm:text-base h-10 sm:h-12 px-4 sm:px-5"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <Image
-              className="dark:invert"
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={20}
-              height={20}
-            />
-            Deploy now
-          </a>
-          <a
-            className="rounded-full border border-solid border-black/[.08] dark:border-white/[.145] transition-colors flex items-center justify-center hover:bg-[#f2f2f2] dark:hover:bg-[#1a1a1a] hover:border-transparent text-sm sm:text-base h-10 sm:h-12 px-4 sm:px-5 sm:min-w-44"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Read our docs
-          </a>
+          <IncrementSetting
+            incrementAmount={incrementAmount}
+            yearlyGoal={yearlyGoal}
+            onIncrementChange={setIncrementAmount}
+            onAutoFill={populateIncrementalAmounts}
+            highestContribution={highestContribution}
+            currentWeek={getCurrentWeek()}
+            totalWeeks={52}
+            savedAmounts={savedAmounts}
+            baseAmount={incrementAmount}
+            onBaseAmountChange={setIncrementAmount}
+          />
+
+          <CharacterProgress
+            envelopes={Array.from({ length: 52 }, (_, i: number) => ({
+              id: String(i + 1),
+              amount: savedAmounts[i],
+              isSelected: confirmedWeeks[i]
+            }))}
+            baseAmount={incrementAmount}
+          />
+
+          <WeeklyGrid
+            weeks={weeks}
+            savedAmounts={savedAmounts}
+            confirmedWeeks={confirmedWeeks}
+            incrementAmount={incrementAmount}
+            characterPosition={characterPosition}
+            onSave={handleSave}
+            onConfirm={handleConfirm}
+          />
         </div>
-      </main>
-      <footer className="row-start-3 flex gap-6 flex-wrap items-center justify-center">
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/file.svg"
-            alt="File icon"
-            width={16}
-            height={16}
-          />
-          Learn
-        </a>
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/window.svg"
-            alt="Window icon"
-            width={16}
-            height={16}
-          />
-          Examples
-        </a>
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://nextjs.org?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/globe.svg"
-            alt="Globe icon"
-            width={16}
-            height={16}
-          />
-          Go to nextjs.org →
-        </a>
-      </footer>
+         <div className="mt-10">
+         <BottomNav />
+         </div>
+      </div>
     </div>
   );
 }
